@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dynamic Quantization — Visual Flowchart</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue-900: #0a1628;
+    --blue-800: #0f2240;
+    --blue-700: #163060;
+    --blue-600: #1d4ed8;
+    --blue-500: #3b82f6;
+    --blue-400: #60a5fa;
+    --blue-300: #93bbfd;
+    --blue-200: #bfdbfe;
+    --blue-100: #dbeafe;
+    --blue-50:  #eff6ff;
+    --white:    #ffffff;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-400: #94a3b8;
+    --gray-600: #475569;
+    --accent:   #f59e0b;
+    --green:    #10b981;
+    --red:      #ef4444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--blue-900);
+    color: var(--white);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .bg-pattern {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% 0%, rgba(59,130,246,0.12) 0%, transparent 60%),
+      radial-gradient(circle at 20% 80%, rgba(59,130,246,0.06) 0%, transparent 40%);
+  }
+
+  .container {
+    position: relative; z-index: 1;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 6px;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--blue-200), var(--white));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--blue-300);
+    font-size: 1rem;
+    margin-bottom: 48px;
+    font-weight: 400;
+  }
+
+  /* ── CONNECTOR ARROWS ── */
+  .arrow-down {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 0;
+  }
+  .arrow-down .shaft {
+    width: 3px;
+    height: 32px;
+    background: linear-gradient(to bottom, var(--blue-500), var(--blue-400));
+    border-radius: 2px;
+  }
+  .arrow-down .head {
+    width: 0; height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 10px solid var(--blue-400);
+  }
+  .arrow-down.long .shaft { height: 48px; }
+
+  .arrow-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--blue-300);
+    text-align: center;
+    margin-top: 2px;
+    margin-bottom: 2px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  /* ── GENERIC BOX ── */
+  .box {
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 0 auto;
+    max-width: 720px;
+    position: relative;
+  }
+
+  /* ── FLOATING INPUT/OUTPUT PILL ── */
+  .pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 0 auto;
+    max-width: 440px;
+    padding: 14px 28px;
+    border-radius: 60px;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .pill.fp32 {
+    background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
+    border: 2px solid var(--blue-400);
+    box-shadow: 0 0 24px rgba(59,130,246,0.25);
+  }
+  .pill .tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.15);
+    letter-spacing: 0.5px;
+  }
+
+  /* ── LAYER DOTTED BOX ── */
+  .layer-box {
+    border: 2.5px dashed var(--blue-400);
+    border-radius: 18px;
+    padding: 32px 28px 28px;
+    margin: 0 auto;
+    max-width: 820px;
+    position: relative;
+    background: rgba(15,34,64,0.55);
+    backdrop-filter: blur(6px);
+  }
+  .layer-badge {
+    position: absolute;
+    top: -15px;
+    left: 32px;
+    background: var(--blue-600);
+    color: var(--white);
+    font-weight: 700;
+    font-size: 0.82rem;
+    padding: 5px 18px;
+    border-radius: 8px;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 12px rgba(29,78,216,0.4);
+  }
+
+  /* ── STEP BOXES ── */
+  .step {
+    background: var(--blue-800);
+    border: 1.5px solid var(--blue-600);
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin: 0 auto;
+    max-width: 680px;
+    transition: border-color 0.2s;
+  }
+  .step:hover { border-color: var(--blue-400); }
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .step-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: var(--blue-600);
+    color: var(--white);
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+  .step-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--blue-100);
+  }
+  .step-body {
+    font-size: 0.85rem;
+    line-height: 1.65;
+    color: var(--blue-200);
+    padding-left: 38px;
+  }
+
+  /* ── FORMULA BLOCK ── */
+  .formula {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    background: var(--blue-900);
+    border: 1px solid var(--blue-700);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 10px 0 6px;
+    color: var(--blue-200);
+    line-height: 1.8;
+    overflow-x: auto;
+  }
+  .formula .kw  { color: var(--blue-400); font-weight: 600; }
+  .formula .val { color: var(--accent); }
+  .formula .cmt { color: var(--gray-400); font-style: italic; }
+
+  /* ── MATMUL HIGHLIGHT BOX ── */
+  .matmul-box {
+    background: linear-gradient(135deg, rgba(29,78,216,0.18), rgba(59,130,246,0.10));
+    border: 1.5px solid var(--blue-500);
+    border-radius: 14px;
+    padding: 22px 24px;
+    margin: 0 auto;
+    max-width: 680px;
+    position: relative;
+  }
+  .matmul-box::before {
+    content: '⚡ CORE COMPUTE';
+    position: absolute;
+    top: -11px;
+    left: 20px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    background: var(--blue-500);
+    color: var(--white);
+    padding: 3px 12px;
+    border-radius: 6px;
+    letter-spacing: 1px;
+  }
+  .matmul-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+    color: var(--white);
+  }
+
+  /* ── DEQUANT BOX ── */
+  .dequant-box {
+    background: rgba(16,185,129,0.08);
+    border: 1.5px solid var(--green);
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin: 0 auto;
+    max-width: 680px;
+  }
+  .dequant-box .step-num { background: var(--green); }
+
+  /* ── POST-OPS BOX ── */
+  .postops-box {
+    background: rgba(245,158,11,0.08);
+    border: 1.5px solid var(--accent);
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin: 0 auto;
+    max-width: 680px;
+  }
+  .postops-box .step-num { background: var(--accent); color: var(--blue-900); }
+
+  /* ── DTYPE CHIP ── */
+  .dtype {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 5px;
+    vertical-align: middle;
+  }
+  .dtype.fp32 { background: rgba(59,130,246,0.2); color: var(--blue-300); }
+  .dtype.int8 { background: rgba(245,158,11,0.2); color: var(--accent); }
+  .dtype.int32{ background: rgba(239,68,68,0.15); color: #fca5a5; }
+
+  /* ── BETWEEN-LAYER BANNER ── */
+  .between-banner {
+    text-align: center;
+    padding: 10px 0;
+  }
+  .between-banner span {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--blue-300);
+    border: 1px solid var(--blue-700);
+    padding: 6px 20px;
+    border-radius: 8px;
+    background: var(--blue-800);
+    letter-spacing: 0.3px;
+  }
+
+  /* ── GRID for side-by-side ── */
+  .side-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 0 auto;
+    max-width: 680px;
+  }
+  .side-grid .step { max-width: 100%; }
+
+  /* ── ANIMATION ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .layer-box, .pill, .between-banner {
+    animation: fadeUp 0.5s ease-out both;
+  }
+  .layer-box:nth-of-type(2) { animation-delay: 0.15s; }
+
+  /* ── LEGEND ── */
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-bottom: 36px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--blue-200);
+  }
+  .legend-swatch {
+    width: 14px; height: 14px;
+    border-radius: 4px;
+  }
+
+  .inner-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4px 0;
+  }
+  .inner-arrow .shaft {
+    width: 2px;
+    height: 20px;
+    background: var(--blue-500);
+    opacity: 0.5;
+  }
+  .inner-arrow .head {
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 7px solid var(--blue-500);
+    opacity: 0.5;
+  }
+
+  @media (max-width: 640px) {
+    .container { padding: 28px 10px 60px; }
+    h1 { font-size: 1.5rem; }
+    .layer-box { padding: 24px 12px 20px; }
+    .step, .matmul-box, .dequant-box, .postops-box { padding: 14px; }
+    .step-body { padding-left: 0; }
+    .side-grid { grid-template-columns: 1fr; }
+    .formula { font-size: 0.7rem; padding: 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-pattern"></div>
+<div class="container">
+
+  <h1>Dynamic Quantization — Layer-by-Layer Flow</h1>
+  <p class="subtitle">How activations are quantized, multiplied, dequantized, and passed forward</p>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--blue-500)"></div> Quantization Steps</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--green)"></div> Dequantization</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--accent)"></div> Post-ops (FP32)</div>
+    <div class="legend-item"><div class="legend-swatch" style="border:2px dashed var(--blue-400);background:transparent"></div> Layer boundary</div>
+  </div>
+
+  <!-- ═══════════════════ INPUT ═══════════════════ -->
+  <div class="pill fp32">
+    <span>Input Activation&nbsp; <strong>X</strong></span>
+    <span class="tag">FP32</span>
+    <span style="font-size:0.8rem; color:var(--blue-200)">shape: [batch, in_features]</span>
+  </div>
+
+  <div class="arrow-down"><div class="shaft"></div><div class="head"></div></div>
+
+  <!-- ═══════════════════ LAYER i ═══════════════════ -->
+  <div class="layer-box">
+    <div class="layer-badge">LAYER i &nbsp;(e.g. nn.Linear)</div>
+
+    <!-- Step 1: Scan -->
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div class="step-title">Scan Activation Range&ensp;<span class="dtype fp32">FP32</span></div>
+      </div>
+      <div class="step-body">
+        Walk through every element of <strong>X</strong> to find the min and max values. This full-tensor scan is the runtime cost of "dynamic" quantization.
+        <div class="formula">
+          <span class="kw">x_min</span> = min(X) &nbsp;&nbsp; <span class="cmt">// e.g. 0.0</span><br>
+          <span class="kw">x_max</span> = max(X) &nbsp;&nbsp; <span class="cmt">// e.g. 6.0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="inner-arrow"><div class="shaft"></div><div class="head"></div></div>
+
+    <!-- Step 2: Compute s, z -->
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div class="step-title">Compute Scale &amp; Zero Point</div>
+      </div>
+      <div class="step-body">
+        Map the float range onto INT8 &thinsp;[&minus;128,&thinsp;127]. The <strong>scale</strong> is the step-size per integer tick. The <strong>zero point</strong> ensures 0.0 maps to an exact integer.
+        <div class="formula">
+          <span class="kw">s<sub>x</sub></span> = (x_max − x_min) / (127 − (−128))<br>
+          &nbsp;&nbsp;&nbsp; = (x_max − x_min) / <span class="val">255</span><br><br>
+          <span class="kw">z<sub>x</sub></span> = round(−128 − x_min / s<sub>x</sub>)<br>
+          &nbsp;&nbsp;&nbsp; <span class="cmt">// clamped to [−128, 127]</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="inner-arrow"><div class="shaft"></div><div class="head"></div></div>
+
+    <!-- Step 3: Quantize -->
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div class="step-title">Quantize Activations&ensp;<span class="dtype fp32">FP32</span> → <span class="dtype int8">INT8</span></div>
+      </div>
+      <div class="step-body">
+        Every element is scaled, shifted, rounded, and clamped to produce an INT8 tensor <strong>X<sub>q</sub></strong> of the same shape.
+        <div class="formula">
+          <span class="kw">X<sub>q</sub>[i]</span> = clamp( round( X[i] / s<sub>x</sub> + z<sub>x</sub> ), −128, 127 )<br><br>
+          <span class="cmt">// Example: X[i] = 3.5, s<sub>x</sub> = 0.02353, z<sub>x</sub> = −128</span><br>
+          <span class="cmt">// X<sub>q</sub>[i] = round(3.5 / 0.02353 + (−128)) = round(20.7) = </span><span class="val">21</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="inner-arrow"><div class="shaft"></div><div class="head"></div></div>
+
+    <!-- MATMUL HIGHLIGHT -->
+    <div class="matmul-box">
+      <div class="matmul-title">INT8 Matrix Multiplication &ensp;<span class="dtype int8">INT8</span> × <span class="dtype int8">INT8</span> → <span class="dtype int32">INT32</span></div>
+      <div class="step-body" style="padding-left:0; color:var(--blue-100);">
+
+        <p>We have two INT8 tensors ready:</p>
+
+        <div class="side-grid" style="margin: 12px 0;">
+          <div class="step" style="border-color:var(--accent);">
+            <div style="font-weight:600; color:var(--accent); font-size:0.82rem; margin-bottom:4px;">Activations (dynamic)</div>
+            <div style="font-size:0.8rem; color:var(--blue-200);">
+              <strong>X<sub>q</sub></strong> &thinsp;INT8<br>
+              scale: s<sub>x</sub> &ensp; zero: z<sub>x</sub><br>
+              <span style="color:var(--gray-400); font-size:0.75rem;">quantized just now ↑</span>
+            </div>
+          </div>
+          <div class="step" style="border-color:var(--blue-400);">
+            <div style="font-weight:600; color:var(--blue-300); font-size:0.82rem; margin-bottom:4px;">Weights (pre-quantized)</div>
+            <div style="font-size:0.8rem; color:var(--blue-200);">
+              <strong>W<sub>q</sub></strong> &thinsp;INT8<br>
+              scale: s<sub>w</sub> &ensp; zero: z<sub>w</sub><br>
+              <span style="color:var(--gray-400); font-size:0.75rem;">stored offline at load time</span>
+            </div>
+          </div>
+        </div>
+
+        <p style="margin:10px 0 6px; font-size:0.85rem;">The real-valued output <strong>Y = X · W<sup>T</sup></strong> is decomposed as:</p>
+        <div class="formula">
+          <span class="cmt">// Real relationship:</span><br>
+          X ≈ s<sub>x</sub> · (X<sub>q</sub> − z<sub>x</sub>)&emsp; W ≈ s<sub>w</sub> · (W<sub>q</sub> − z<sub>w</sub>)<br><br>
+
+          <span class="cmt">// Substituting into Y = X · Wᵀ :</span><br>
+          Y = s<sub>x</sub> · s<sub>w</sub> · <span class="val">(X<sub>q</sub> − z<sub>x</sub>) · (W<sub>q</sub> − z<sub>w</sub>)<sup>T</sup></span><br>
+          &nbsp;&nbsp;&nbsp; ↑ <span class="cmt">float scalar</span> &emsp;&emsp; ↑ <span class="cmt">integer-only matmul</span><br><br>
+
+          <span class="cmt">// Hardware executes:</span><br>
+          <span class="kw">Y<sub>int32</sub></span> = (X<sub>q</sub> − z<sub>x</sub>) · (W<sub>q</sub> − z<sub>w</sub>)<sup>T</sup><br>
+          <span class="cmt">// INT8 × INT8 → accumulated in INT32 registers</span><br>
+          <span class="cmt">// (avoids overflow: N × 127 × 127 can exceed INT8)</span>
+        </div>
+
+        <p style="font-size:0.82rem; color:var(--blue-300); margin-top:8px;">
+          This is where the <strong>2–4× speedup</strong> lives: INT8 multiply-accumulate ops are much faster than FP32, and loading INT8 weights uses 4× less memory bandwidth.
+        </p>
+      </div>
+    </div>
+
+    <div class="inner-arrow"><div class="shaft"></div><div class="head"></div></div>
+
+    <!-- Step 5: Dequantize -->
+    <div class="dequant-box">
+      <div class="step-header">
+        <div class="step-num">5</div>
+        <div class="step-title">Dequantize Result&ensp;<span class="dtype int32">INT32</span> → <span class="dtype fp32">FP32</span></div>
+      </div>
+      <div class="step-body" style="padding-left:38px;">
+        Multiply the integer result by the combined scale to recover a floating-point output.
+        <div class="formula">
+          <span class="kw">Y<sub>float</sub></span> = s<sub>x</sub> · s<sub>w</sub> · Y<sub>int32</sub><br>
+          <span class="cmt">// one scalar × entire tensor → back to FP32</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="inner-arrow"><div class="shaft"></div><div class="head"></div></div>
+
+    <!-- Step 6: Post-ops -->
+    <div class="postops-box">
+      <div class="step-header">
+        <div class="step-num">6</div>
+        <div class="step-title">Post-ops (all in FP32)</div>
+      </div>
+      <div class="step-body" style="padding-left:38px; color:var(--blue-100);">
+        Add bias, apply activation functions (ReLU, GELU …), batch norm, residual connections, layer norm — all in floating point.
+        <div class="formula">
+          <span class="kw">Y<sub>out</sub></span> = Activation( Y<sub>float</sub> + bias )<br>
+          <span class="cmt">// e.g. ReLU( Y<sub>float</sub> + bias )</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end layer-box -->
+
+  <!-- ═══════════ BETWEEN LAYERS ═══════════ -->
+  <div class="arrow-down long"><div class="shaft"></div><div class="head"></div></div>
+  <div class="between-banner"><span>Y<sub>out</sub> travels as <strong>FP32</strong> — quantization is gone, no INT8 data leaves the layer</span></div>
+  <div class="arrow-down long"><div class="shaft"></div><div class="head"></div></div>
+
+  <!-- ═══════════════════ LAYER i+1 ═══════════════════ -->
+  <div class="layer-box" style="border-color: var(--blue-300);">
+    <div class="layer-badge" style="background:var(--blue-500);">LAYER i + 1</div>
+
+    <!-- Step 1 -->
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div class="step-title">Scan <em>New</em> Activation Range&ensp;<span class="dtype fp32">FP32</span></div>
+      </div>
+      <div class="step-body">
+        The incoming tensor has <strong>completely different</strong> values now (post-ReLU, post-LayerNorm, etc.) so a fresh scan is needed.
+        <div class="formula">
+          <span class="kw">x_min′</span> = min(Y<sub>out</sub>) &nbsp;&nbsp;<span class="cmt">// new values!</span><br>
+          <span class="kw">x_max′</span> = max(Y<sub>out</sub>) &nbsp;&nbsp;<span class="cmt">// different from layer i</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="inner-arrow"><div class="shaft"></div><div class="head"></div></div>
+
+    <!-- Step 2 -->
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div class="step-title">Compute <em>New</em> Scale &amp; Zero Point</div>
+      </div>
+      <div class="step-body">
+        Entirely new parameters — no relationship to Layer i's values.
+        <div class="formula">
+          <span class="kw">s<sub>x</sub>′</span> = (x_max′ − x_min′) / <span class="val">255</span><br>
+          <span class="kw">z<sub>x</sub>′</span> = round(−128 − x_min′ / s<sub>x</sub>′)
+        </div>
+      </div>
+    </div>
+
+    <div class="inner-arrow"><div class="shaft"></div><div class="head"></div></div>
+
+    <!-- Step 3 -->
+    <div class="step">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div class="step-title">Quantize&ensp;<span class="dtype fp32">FP32</span> → <span class="dtype int8">INT8</span></div>
+      </div>
+      <div class="step-body">
+        <div class="formula">
+          <span class="kw">X<sub>q</sub>′[i]</span> = clamp( round( Y<sub>out</sub>[i] / s<sub>x</sub>′ + z<sub>x</sub>′ ), −128, 127 )
+        </div>
+      </div>
+    </div>
+
+    <div class="inner-arrow"><div class="shaft"></div><div class="head"></div></div>
+
+    <!-- MATMUL -->
+    <div class="matmul-box">
+      <div class="matmul-title">INT8 Matmul (Layer i+1 Weights)&ensp;<span class="dtype int8">INT8</span> × <span class="dtype int8">INT8</span> → <span class="dtype int32">INT32</span></div>
+      <div class="step-body" style="padding-left:0; color:var(--blue-100);">
+        Same principle, but with <strong>Layer i+1's pre-quantized weights</strong> (W<sub>q</sub>′, s<sub>w</sub>′, z<sub>w</sub>′).
+        <div class="formula">
+          <span class="kw">Y<sub>int32</sub>′</span> = (X<sub>q</sub>′ − z<sub>x</sub>′) · (W<sub>q</sub>′ − z<sub>w</sub>′)<sup>T</sup><br><br>
+          <span class="kw">Y<sub>float</sub>′</span> = s<sub>x</sub>′ · s<sub>w</sub>′ · Y<sub>int32</sub>′&emsp;<span class="cmt">// dequantize</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="inner-arrow"><div class="shaft"></div><div class="head"></div></div>
+
+    <!-- Post-ops -->
+    <div class="postops-box">
+      <div class="step-header">
+        <div class="step-num">6</div>
+        <div class="step-title">Post-ops → FP32 output</div>
+      </div>
+      <div class="step-body" style="padding-left:38px; color:var(--blue-100);">
+        Bias + activation + normalization in FP32, then pass to the next layer.
+      </div>
+    </div>
+
+  </div><!-- end layer-box -->
+
+  <!-- ═══════════ OUTPUT ═══════════ -->
+  <div class="arrow-down long"><div class="shaft"></div><div class="head"></div></div>
+
+  <div class="pill fp32">
+    <span>Continues to Layer i+2 …</span>
+    <span class="tag">FP32</span>
+    <span style="font-size:0.8rem; color:var(--blue-200)">same cycle repeats</span>
+  </div>
+
+  <!-- KEY TAKEAWAY -->
+  <div style="margin-top:48px; text-align:center; max-width:600px; margin-left:auto; margin-right:auto;">
+    <div style="font-weight:700; font-size:1.05rem; color:var(--blue-100); margin-bottom:10px;">Key Takeaway</div>
+    <p style="font-size:0.88rem; line-height:1.7; color:var(--blue-300);">
+      Inside each layer the data lives as <span class="dtype fp32">FP32</span> → <span class="dtype int8">INT8</span> → <span class="dtype int32">INT32</span> → <span class="dtype fp32">FP32</span>. Between layers it is always <span class="dtype fp32">FP32</span>. Quantization is transient — it exists only for the heavy matrix multiply where INT8 hardware delivers the speed and memory benefits.
+    </p>
+  </div>
+
+</div>
+</body>
+</html>
